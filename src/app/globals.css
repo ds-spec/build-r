@@ -1,26 +1,120 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/* ─── Design tokens ──────────────────────────────────────────── */
+@theme {
+  /* Backgrounds */
+  --color-canvas:       #0C0C0F;   /* infinite canvas background */
+  --color-surface:      #141417;   /* node card background */
+  --color-surface-2:    #1C1C21;   /* elevated surfaces (inputs, hover) */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  /* Borders */
+  --color-border:       #2A2A32;
+  --color-border-focus: #4A4A58;
+
+  /* Text */
+  --color-text:         #F0F0F4;
+  --color-muted:        #7A7A8C;
+  --color-subtle:       #4A4A58;
+
+  /* Accent — indigo/violet, premium feel */
+  --color-accent:       #6366F1;
+  --color-accent-hover: #818CF8;
+  --color-accent-muted: rgba(99, 102, 241, 0.15);
+
+  /* Semantic */
+  --color-user-msg:     #1C1C2E;
+  --color-ai-msg:       #141417;
+
+  /* Fonts */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ─── Base ───────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  background: var(--color-canvas);
+  color: var(--color-text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ─── React Flow overrides ───────────────────────────────────── */
+.react-flow__background {
+  background-color: var(--color-canvas) !important;
+}
+
+/* Dot grid pattern */
+.react-flow__background pattern circle {
+  fill: #2A2A38;
+}
+
+/* Edge lines */
+.react-flow__edge-path {
+  stroke: var(--color-border-focus);
+  stroke-width: 1.5;
+}
+
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke: var(--color-accent);
+  stroke-dasharray: 5;
+}
+
+/* Connection handles */
+.react-flow__handle {
+  width: 10px;
+  height: 10px;
+  background: var(--color-surface-2);
+  border: 2px solid var(--color-accent);
+  border-radius: 50%;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.react-flow__handle:hover {
+  background: var(--color-accent);
+  transform: scale(1.25);
+}
+
+/* Controls + minimap */
+.react-flow__controls {
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  background: var(--color-surface) !important;
+  border-bottom: 1px solid var(--color-border) !important;
+  fill: var(--color-muted) !important;
+}
+
+.react-flow__controls-button:hover {
+  background: var(--color-surface-2) !important;
+  fill: var(--color-text) !important;
+}
+
+.react-flow__minimap {
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 8px !important;
+}
+
+/* Selection box */
+.react-flow__selection {
+  background: var(--color-accent-muted);
+  border: 1px solid var(--color-accent);
+}
+
+/* Node selected ring */
+.react-flow__node.selected > * {
+  outline: 1.5px solid var(--color-accent) !important;
+  outline-offset: 1px;
+}
+
+/* Remove default node border/shadow React Flow adds */
+.react-flow__node {
+  filter: none !important;
 }
