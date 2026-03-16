@@ -10,18 +10,12 @@ import type {
   Connection,
 } from "@xyflow/react";
 import { nanoid } from "nanoid";
-
-// The data payload inside each chat node
-export type Message = {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-};
+import type { UIMessage } from "ai";
 
 export type ChatNodeData = {
   title: string;
   model: string;
-  messages: Message[];
+  messages: UIMessage[];
 };
 
 // Extend React Flow's Node type with our data shape
