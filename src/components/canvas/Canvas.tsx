@@ -1,74 +1,80 @@
-'use client'
+"use client";
 
 import {
   ReactFlow,
+  ReactFlowProvider,
   Background,
   BackgroundVariant,
   Controls,
   MiniMap,
-  type NodeMouseHandler,
-} from '@xyflow/react'
-import '@xyflow/react/dist/style.css'
+  useReactFlow,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 
-import { useCanvasStore } from '@/lib/store'
-import ChatNode from './ChatNode'
+import { useCanvasStore } from "@/lib/store";
+import ChatNode from "./ChatNode";
+import { useRef } from "react";
 
-// MUST be defined outside the component — React Flow uses referential equality
-// to decide whether to remount node components. Defining inside = constant remounts.
 const nodeTypes = {
   chatNode: ChatNode,
+};
+
+// CanvasInner is split out so it can call useReactFlow().
+// useReactFlow() requires being inside a ReactFlowProvider context —
+// the component that *renders* <ReactFlow> is outside that context,
+// so it can't call the hook directly. CanvasInner renders *inside* the provider.
+
+function CanvasInner() {
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode } =
+    useCanvasStore();
+
+  const { screenToFlowPosition } = useReactFlow();
+
+  return (
+    <ReactFlow
+      nodes={nodes}
+      edges={edges}
+      nodeTypes={nodeTypes}
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
+      onConnect={onConnect}
+      zoomOnDoubleClick={false}
+      // onDoubleClick={handleDoubleClick}
+      // onClick
+      onPaneClick={(event) => {
+        if (event.detail === 2) {
+          addNode(screenToFlowPosition({ x: event.clientX, y: event.clientY }));
+        }
+      }}
+      fitView
+      fitViewOptions={{ padding: 0.3 }}
+      minZoom={0.2}
+      maxZoom={2}
+      deleteKeyCode="Backspace"
+      proOptions={{ hideAttribution: true }}
+    >
+      <Background
+        variant={BackgroundVariant.Dots}
+        gap={40}
+        size={2.5}
+        color="#2f2f2f"
+      />
+      <Controls position="bottom-left" />
+      <MiniMap
+        position="bottom-right"
+        nodeColor="#1C1C21"
+        maskColor="rgba(12,12,15,0.7)"
+      />
+    </ReactFlow>
+  );
 }
 
 export default function Canvas() {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode } =
-    useCanvasStore()
-
-  // Double-click on the canvas background creates a new node at that position
-  const handlePaneDoubleClick: NodeMouseHandler = (event) => {
-    const target = event.target as HTMLElement
-    // Only fire when clicking the background pane, not a node
-    if (!target.classList.contains('react-flow__pane')) return
-
-    const bounds = (event.currentTarget as HTMLElement).getBoundingClientRect()
-    addNode({
-      x: (event as unknown as MouseEvent).clientX - bounds.left - 160, // center the 320px node
-      y: (event as unknown as MouseEvent).clientY - bounds.top - 50,
-    })
-  }
-
   return (
     <div className="w-full h-full">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onPaneClick={(e) => {
-          // single click: could deselect, React Flow handles this natively
-        }}
-        onDoubleClick={handlePaneDoubleClick as unknown as React.MouseEventHandler}
-        fitView
-        fitViewOptions={{ padding: 0.3 }}
-        minZoom={0.2}
-        maxZoom={2}
-        deleteKeyCode="Backspace"
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={20}
-          size={1}
-          color="#2A2A38"
-        />
-        <Controls position="bottom-left" />
-        <MiniMap
-          position="bottom-right"
-          nodeColor="#1C1C21"
-          maskColor="rgba(12,12,15,0.7)"
-        />
-      </ReactFlow>
+      <ReactFlowProvider>
+        <CanvasInner />
+      </ReactFlowProvider>
     </div>
-  )
+  );
 }

@@ -42,28 +42,28 @@ html, body {
 }
 
 /* ─── React Flow overrides ───────────────────────────────────── */
-.react-flow__background {
+.xy-flow__background {
   background-color: var(--color-canvas) !important;
 }
 
 /* Dot grid pattern */
-.react-flow__background pattern circle {
+.xy-flow__background pattern circle {
   fill: #2A2A38;
 }
 
 /* Edge lines */
-.react-flow__edge-path {
+.xy-flow__edge-path {
   stroke: var(--color-border-focus);
   stroke-width: 1.5;
 }
 
-.react-flow__edge.animated .react-flow__edge-path {
+.xy-flow__edge.animated .xy-flow__edge-path {
   stroke: var(--color-accent);
   stroke-dasharray: 5;
 }
 
 /* Connection handles */
-.react-flow__handle {
+.xy-flow__handle {
   width: 10px;
   height: 10px;
   background: var(--color-surface-2);
@@ -72,49 +72,49 @@ html, body {
   transition: background 0.15s, transform 0.15s;
 }
 
-.react-flow__handle:hover {
+.xy-flow__handle:hover {
   background: var(--color-accent);
   transform: scale(1.25);
 }
 
 /* Controls + minimap */
-.react-flow__controls {
+.xy-flow__controls {
   background: var(--color-surface) !important;
   border: 1px solid var(--color-border) !important;
   border-radius: 8px !important;
   overflow: hidden;
 }
 
-.react-flow__controls-button {
+.xy-flow__controls-button {
   background: var(--color-surface) !important;
   border-bottom: 1px solid var(--color-border) !important;
   fill: var(--color-muted) !important;
 }
 
-.react-flow__controls-button:hover {
+.xy-flow__controls-button:hover {
   background: var(--color-surface-2) !important;
   fill: var(--color-text) !important;
 }
 
-.react-flow__minimap {
+.xy-flow__minimap {
   background: var(--color-surface) !important;
   border: 1px solid var(--color-border) !important;
   border-radius: 8px !important;
 }
 
 /* Selection box */
-.react-flow__selection {
+.xy-flow__selection {
   background: var(--color-accent-muted);
   border: 1px solid var(--color-accent);
 }
 
 /* Node selected ring */
-.react-flow__node.selected > * {
+.xy-flow__node.selected > * {
   outline: 1.5px solid var(--color-accent) !important;
   outline-offset: 1px;
 }
 
 /* Remove default node border/shadow React Flow adds */
-.react-flow__node {
+.xy-flow__node {
   filter: none !important;
 }
