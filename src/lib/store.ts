@@ -16,6 +16,8 @@ export type ChatNodeData = {
   title: string;
   model: string;
   messages: UIMessage[];
+  // How many leading messages are inherited context (hidden from UI, used for LLM history)
+  branchDepth?: number;
 };
 
 // Extend React Flow's Node type with our data shape
@@ -32,15 +34,24 @@ type CanvasStore = {
 
   // Our own actions
   addNode: (position: { x: number; y: number }) => void;
+  addBranchNode: (
+    position: { x: number; y: number },
+    sourceNodeId: string,
+    messages: UIMessage[],
+    model: string
+  ) => void;
   updateNodeData: (nodeId: string, data: Partial<ChatNodeData>) => void;
   removeNode: (nodeId: string) => void;
   initCanvas: (nodes: ChatNode[], edges: Edge[]) => void;
 };
 
+const DRAG_HANDLE = ".node-drag-handle";
+
 // One starter node so the canvas isn't empty on first load
 const initialNode: ChatNode = {
   id: nanoid(),
   type: "chatNode",
+  dragHandle: DRAG_HANDLE,
   position: { x: 200, y: 150 },
   data: {
     title: "New Chat",
@@ -63,7 +74,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
 
   onConnect: (connection) =>
     set((state) => ({
-      edges: [...state.edges, { ...connection, id: nanoid(), type: "smoothstep" }],
+      edges: [...state.edges, { ...connection, id: nanoid(), type: "default" }],
     })),
 
   addNode: (position) =>
@@ -73,11 +84,34 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         {
           id: nanoid(),
           type: "chatNode",
+          dragHandle: DRAG_HANDLE,
           position,
           data: { title: "New Chat", model: "gpt-4o", messages: [] },
         },
       ],
     })),
+
+  addBranchNode: (position, sourceNodeId, messages, model) =>
+    set((state) => {
+      const newId = nanoid();
+      return {
+        nodes: [
+          ...state.nodes,
+          {
+            id: newId,
+            type: "chatNode",
+            dragHandle: DRAG_HANDLE,
+            position,
+            // Pass full history as context; branchDepth hides it from the UI
+            data: { title: "Branch", model, messages, branchDepth: messages.length },
+          },
+        ],
+        edges: [
+          ...state.edges,
+          { id: nanoid(), source: sourceNodeId, target: newId, type: "default" },
+        ],
+      };
+    }),
 
   updateNodeData: (nodeId, data) =>
     set((state) => ({

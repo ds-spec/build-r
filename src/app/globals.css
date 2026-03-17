@@ -2,28 +2,24 @@
 
 /* ─── Design tokens ──────────────────────────────────────────── */
 @theme {
-  /* Backgrounds */
-  --color-canvas: #0c0c0f; /* infinite canvas background */
-  --color-surface: #141417; /* node card background */
-  --color-surface-2: #1c1c21; /* elevated surfaces (inputs, hover) */
+  /* Backgrounds — warm near-black, Sova-inspired */
+  --color-canvas: #09080a;
+  --color-surface: #0f0d10;
+  --color-surface-2: #161318;
 
   /* Borders */
-  --color-border: #2a2a32;
-  --color-border-focus: #4a4a58;
+  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border-focus: rgba(255, 255, 255, 0.16);
 
   /* Text */
-  --color-text: #f0f0f4;
-  --color-muted: #7a7a8c;
-  --color-subtle: #4a4a58;
+  --color-text: #f0ede8;
+  --color-muted: #7a6f68;
+  --color-subtle: #4a4040;
 
-  /* Accent — indigo/violet, premium feel */
-  --color-accent: #6366f1;
-  --color-accent-hover: #818cf8;
-  --color-accent-muted: rgba(99, 102, 241, 0.15);
-
-  /* Semantic */
-  --color-user-msg: #1c1c2e;
-  --color-ai-msg: #141417;
+  /* Accent — deep ember red */
+  --color-accent: #c0341d;
+  --color-accent-hover: #e04e35;
+  --color-accent-muted: rgba(192, 52, 29, 0.12);
 
   /* Fonts */
   --font-sans: var(--font-geist-sans);
@@ -46,90 +42,104 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-.xy-flow__background {
+/* ─── React Flow canvas ──────────────────────────────────────── */
+.react-flow__background {
   background: var(--color-canvas) !important;
 }
 
-.xy-flow__panel .xy-flow__minimap {
-  background: red !important;
+/* Dot grid — very subtle warm dots */
+.react-flow__background pattern circle {
+  fill: #1e1a1c;
 }
 
-/* Dot grid pattern */
-.xy-flow__background pattern circle {
-  fill: #2a2a38;
+/* ─── Edges ──────────────────────────────────────────────────── */
+.react-flow__edge-path {
+  stroke: #2e2228;
+  stroke-width: 1;
+  transition: stroke 0.2s;
 }
 
-/* Edge lines */
-.xy-flow__edge-path {
-  stroke: #3d3d52;
-  stroke-width: 1.5;
-}
-
-.xy-flow__edge:hover .xy-flow__edge-path,
-.xy-flow__edge.selected .xy-flow__edge-path {
-  stroke: var(--color-accent);
-}
-
-/* In-progress connection line while dragging */
-.xy-flow__connection-path {
+.react-flow__edge:hover .react-flow__edge-path,
+.react-flow__edge.selected .react-flow__edge-path {
   stroke: var(--color-accent);
   stroke-width: 1.5;
-  opacity: 0.6;
 }
 
-/* Handles — hidden by default, appear on node hover */
-.xy-flow__handle {
-  width: 8px;
-  height: 8px;
-  background: var(--color-accent);
-  border: 1.5px solid var(--color-canvas);
+/* Thread — the live connection line while dragging */
+.react-flow__connection-path {
+  stroke: var(--color-accent);
+  stroke-width: 0.75;
+  opacity: 0.55;
+  stroke-dasharray: none;
+}
+
+/* ─── Handles ────────────────────────────────────────────────── */
+/* Base styles — overridden per-node by ChatNode Tailwind classes */
+.react-flow__handle {
   border-radius: 50%;
-  opacity: 0;
   transition: opacity 0.15s, transform 0.15s;
 }
 
-.xy-flow__node:hover .xy-flow__handle,
-.xy-flow__handle.connectionindicator {
-  opacity: 1;
+.react-flow__handle:hover,
+.react-flow__handle.connectionindicator {
+  transform: scale(1.3);
+  border-color: var(--color-accent) !important;
 }
 
-.xy-flow__handle:hover {
-  transform: scale(1.4);
+/* ─── Controls ───────────────────────────────────────────────── */
+.react-flow__controls {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
-/* Controls + minimap */
-.xy-flow__controls {
-  background: var(--color-surface) !important;
-  border: 1px solid var(--color-border) !important;
+.react-flow__controls-button {
+  width: 28px !important;
+  height: 28px !important;
+  background: #0f0d10 !important;
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
   border-radius: 8px !important;
-  overflow: hidden;
+  fill: rgba(255, 255, 255, 0.3) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
 }
 
-.xy-flow__controls-button {
-  background: var(--color-surface) !important;
-  border-bottom: 1px solid var(--color-border) !important;
-  fill: var(--color-muted) !important;
+.react-flow__controls-button:hover {
+  background: #161318 !important;
+  fill: rgba(255, 255, 255, 0.7) !important;
+  border-color: rgba(255, 255, 255, 0.13) !important;
 }
 
-.xy-flow__controls-button:hover {
-  background: var(--color-surface-2) !important;
-  fill: var(--color-text) !important;
-}
-
-.xy-flow__minimap {
-  background: var(--color-surface) !important;
-  border: 1px solid var(--color-border) !important;
-  border-radius: 8px !important;
-}
-
-/* Selection box */
+/* ─── Selection box ──────────────────────────────────────────── */
 .xy-flow__selection {
-  background: var(--color-accent-muted);
-  border: 1px solid var(--color-accent);
+  background: rgba(192, 52, 29, 0.06);
+  border: 1px solid rgba(192, 52, 29, 0.3);
 }
 
-/* Remove default node border/shadow React Flow adds */
+/* ─── Remove React Flow's default node chrome ────────────────── */
 .xy-flow__node {
   filter: none !important;
 }
 
+/* ─── Thin custom scrollbar for chat areas ───────────────────── */
+.chat-scroll::-webkit-scrollbar {
+  width: 3px;
+}
+
+.chat-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 99px;
+}
+
+.chat-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.14);
+}

@@ -7,7 +7,6 @@ import {
   Background,
   BackgroundVariant,
   Controls,
-  MiniMap,
   Panel,
   useReactFlow,
 } from "@xyflow/react";
@@ -52,31 +51,32 @@ function CanvasInner() {
         deleteKeyCode="Backspace"
         proOptions={{ hideAttribution: true }}
         defaultEdgeOptions={{
-          type: "smoothstep",
-          style: { stroke: "#3d3d52", strokeWidth: 1.5 },
+          type: "default",
+          style: { stroke: "#3a2825", strokeWidth: 1.25 },
         }}
-        connectionLineStyle={{ stroke: "#6366f1", strokeWidth: 1.5, opacity: 0.6 }}
+        connectionLineStyle={{
+          stroke: "#c0341d",
+          strokeWidth: 1,
+          opacity: 0.5,
+        }}
+        elevateNodesOnSelect
       >
         <Background
           variant={BackgroundVariant.Dots}
-          gap={40}
-          size={2.5}
-          color="#2f2f2f"
-        />
-        <Controls position="bottom-left" />
-        <MiniMap
-          nodeStrokeWidth={3}
-          nodeStrokeColor="#1a1a1a"
-          position="bottom-right"
-          nodeColor="#1C1C21"
-          maskColor="rgba(12,12,15,0.7)"
+          gap={44}
+          size={1.5}
+          color="#1e1a1c"
         />
 
-        {/* Gear button — top-right corner, sits over the canvas */}
+        <Controls
+          position="bottom-left"
+          showInteractive={false}
+        />
+
         <Panel position="top-right">
           <button
             onClick={() => setSettingsOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-surface border border-border text-muted hover:text-text hover:border-border-focus transition-all text-xs"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#0f0d10] border border-white/7 text-white/35 hover:text-white/65 hover:border-white/13 transition-all text-xs"
           >
             <Settings size={13} />
             API Keys
