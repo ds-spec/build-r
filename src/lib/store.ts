@@ -34,6 +34,7 @@ type CanvasStore = {
 
   // Our own actions
   addNode: (position: { x: number; y: number }) => void;
+  duplicateNode: (nodeId: string) => void;
   addBranchNode: (
     position: { x: number; y: number },
     sourceNodeId: string,
@@ -90,6 +91,25 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         },
       ],
     })),
+
+  duplicateNode: (nodeId) =>
+    set((state) => {
+      const source = state.nodes.find((n) => n.id === nodeId);
+      if (!source) return state;
+      return {
+        nodes: [
+          ...state.nodes,
+          {
+            ...source,
+            id: nanoid(),
+            dragHandle: DRAG_HANDLE,
+            selected: false,
+            position: { x: source.position.x + 40, y: source.position.y + 40 },
+            data: { ...source.data },
+          },
+        ],
+      };
+    }),
 
   addBranchNode: (position, sourceNodeId, messages, model) =>
     set((state) => {

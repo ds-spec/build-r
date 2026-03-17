@@ -7,7 +7,7 @@ import remarkGfm from "remark-gfm";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
-import { LayoutGrid, Trash2, Copy, Maximize2, GitBranch } from "lucide-react";
+import { Trash2, Copy, Maximize2, GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCanvasStore, type ChatNode } from "@/lib/store";
 import { modelToProvider } from "@/lib/models";
@@ -134,10 +134,6 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
             }}
           />
 
-          <div className="w-5 h-5 rounded-md bg-white/5 border border-white/7 flex items-center justify-center shrink-0">
-            <LayoutGrid size={10} className="text-white/35" />
-          </div>
-
           {editingTitle ? (
             <input
               ref={titleRef}
@@ -197,7 +193,7 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
           {/* Messages */}
           {visibleMessages.length > 0 && (
             <div
-              className="chat-scroll max-h-150 overflow-y-auto px-4 py-4 flex flex-col gap-5"
+              className="nowheel nodrag nopan chat-scroll max-h-150 overflow-y-auto px-4 py-4 flex flex-col gap-5"
               onWheel={(e) => e.stopPropagation()}
             >
               {visibleMessages.map((msg, idx) => {

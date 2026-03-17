@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -22,10 +22,37 @@ const nodeTypes = {
 };
 
 function CanvasInner() {
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode } =
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, duplicateNode } =
     useCanvasStore();
   const { screenToFlowPosition } = useReactFlow();
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const editing =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable;
+
+      // N — new node (no modifier, like Figma)
+      if (e.key === "n" && !e.metaKey && !e.ctrlKey && !editing) {
+        e.preventDefault();
+        addNode(screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 }));
+        return;
+      }
+
+      // Cmd/Ctrl+D — duplicate selected node
+      if (e.key === "d" && (e.metaKey || e.ctrlKey) && !editing) {
+        const selected = nodes.find((n) => n.selected);
+        if (!selected) return;
+        e.preventDefault();
+        duplicateNode(selected.id);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [nodes, addNode, duplicateNode, screenToFlowPosition]);
 
   return (
     <>
@@ -61,6 +88,19 @@ function CanvasInner() {
         }}
         elevateNodesOnSelect
       >
+        {nodes.length === 0 && (
+          <Panel position="top-center" className="top-1/2! -translate-y-1/2! pointer-events-none select-none">
+            <div className="flex flex-col items-center gap-2 text-center">
+              <p className="text-white/20 text-sm font-medium tracking-wide">
+                Double-click anywhere to create a node
+              </p>
+              <p className="text-white/10 text-xs">
+                or press <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/20 font-mono text-[11px]">N</kbd>
+              </p>
+            </div>
+          </Panel>
+        )}
+
         <Background
           variant={BackgroundVariant.Dots}
           gap={44}
@@ -68,10 +108,7 @@ function CanvasInner() {
           color="#1e1a1c"
         />
 
-        <Controls
-          position="bottom-left"
-          showInteractive={false}
-        />
+        <Controls position="bottom-left" showInteractive={false} />
 
         <Panel position="top-right">
           <button
