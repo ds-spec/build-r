@@ -51,6 +51,11 @@ function CanvasInner() {
         maxZoom={2}
         deleteKeyCode="Backspace"
         proOptions={{ hideAttribution: true }}
+        defaultEdgeOptions={{
+          type: "smoothstep",
+          style: { stroke: "#3d3d52", strokeWidth: 1.5 },
+        }}
+        connectionLineStyle={{ stroke: "#6366f1", strokeWidth: 1.5, opacity: 0.6 }}
       >
         <Background
           variant={BackgroundVariant.Dots}
@@ -60,6 +65,8 @@ function CanvasInner() {
         />
         <Controls position="bottom-left" />
         <MiniMap
+          nodeStrokeWidth={3}
+          nodeStrokeColor="#1a1a1a"
           position="bottom-right"
           nodeColor="#1C1C21"
           maskColor="rgba(12,12,15,0.7)"

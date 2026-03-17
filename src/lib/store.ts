@@ -33,6 +33,8 @@ type CanvasStore = {
   // Our own actions
   addNode: (position: { x: number; y: number }) => void;
   updateNodeData: (nodeId: string, data: Partial<ChatNodeData>) => void;
+  removeNode: (nodeId: string) => void;
+  initCanvas: (nodes: ChatNode[], edges: Edge[]) => void;
 };
 
 // One starter node so the canvas isn't empty on first load
@@ -61,7 +63,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
 
   onConnect: (connection) =>
     set((state) => ({
-      edges: [...state.edges, { ...connection, id: nanoid(), animated: true }],
+      edges: [...state.edges, { ...connection, id: nanoid(), type: "smoothstep" }],
     })),
 
   addNode: (position) =>
@@ -83,4 +85,14 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
         n.id === nodeId ? { ...n, data: { ...n.data, ...data } } : n
       ),
     })),
+
+  removeNode: (nodeId) =>
+    set((state) => ({
+      nodes: state.nodes.filter((n) => n.id !== nodeId),
+      edges: state.edges.filter(
+        (e) => e.source !== nodeId && e.target !== nodeId
+      ),
+    })),
+
+  initCanvas: (nodes, edges) => set({ nodes, edges }),
 }));

@@ -1,11 +1,33 @@
-import Canvas from '@/components/canvas/Canvas'
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import CanvasWrapper from "@/components/canvas/CanvasWrapper";
 
-// This page is the full-screen canvas workspace.
-// The [id] param will map to a canvas document in Supabase (Week 2).
-export default function CanvasPage() {
+export default async function CanvasPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const { data: canvas, error } = await supabase
+    .from("canvases")
+    .select("id, title, nodes, edges")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
+
+  if (error || !canvas) redirect("/dashboard");
+
   return (
     <main className="w-screen h-screen overflow-hidden bg-canvas">
-      <Canvas />
+      <CanvasWrapper canvas={canvas} />
     </main>
-  )
+  );
 }

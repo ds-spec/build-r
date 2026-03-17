@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
-import { Bot, User, Loader2 } from "lucide-react";
+import { LayoutGrid, Trash2, Copy, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCanvasStore, type ChatNode } from "@/lib/store";
 import { modelToProvider } from "@/lib/models";
@@ -12,54 +12,56 @@ import { getKey } from "@/lib/keys";
 import ModelSelector from "./ModelSelector";
 
 export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
-  const updateNodeData = useCanvasStore((s) => s.updateNodeData);
+  const { updateNodeData, removeNode, addNode } = useCanvasStore();
+
   const [inputValue, setInputValue] = useState("");
+  const [editingTitle, setEditingTitle] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const titleRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Ref so the transport function always reads the latest model without stale closure.
-  // The transport is created once (useMemo []), but headers/body are functions
-  // called at request time — they read modelRef.current, which stays current.
   const modelRef = useRef(data.model);
-  useEffect(() => {
-    modelRef.current = data.model;
-  }, [data.model]);
+  useEffect(() => { modelRef.current = data.model; }, [data.model]);
 
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: "/api/chat",
-        // Functions here are called at request time, not at init time
-        headers: () => ({
-          "x-api-key": getKey(modelToProvider(modelRef.current)),
-        }),
+        headers: () => ({ "x-api-key": getKey(modelToProvider(modelRef.current)) }),
         body: () => ({ model: modelRef.current }),
       }),
-    [] // created once per node — modelRef handles the dynamic values
+    []
   );
 
   const { messages, sendMessage, status } = useChat({
     id,
-    messages: data.messages, // ChatInit.messages — seeds the hook's initial state
+    messages: data.messages,
     transport,
   });
 
   const isLoading = status === "submitted" || status === "streaming";
 
-  // Sync messages to Zustand only when streaming is complete (status → 'ready')
   useEffect(() => {
-    if (status === "ready" && messages.length > 0) {
-      updateNodeData(id, { messages });
-    }
+    if (status === "ready" && messages.length > 0) updateNodeData(id, { messages });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
-  // Auto-scroll to bottom as messages stream in
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSubmit = (e: React.SyntheticEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [inputValue]);
+
+  useEffect(() => {
+    if (editingTitle) titleRef.current?.select();
+  }, [editingTitle]);
+
+  const handleSubmit = () => {
     if (!inputValue.trim() || isLoading) return;
     sendMessage({ text: inputValue.trim() });
     setInputValue("");
@@ -68,117 +70,168 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
   return (
     <div
       className={cn(
-        "w-80 rounded-xl border bg-surface flex flex-col shadow-2xl",
-        "transition-colors duration-150",
-        selected ? "border-accent" : "border-border"
+        "w-125 flex flex-col rounded-xl overflow-hidden",
+        "bg-[#131315] transition-all duration-200",
+        selected
+          ? "border border-white/15 shadow-[0_0_0_1px_rgba(255,255,255,0.06),0_8px_40px_rgba(0,0,0,0.7)]"
+          : "border border-white/7 shadow-[0_4px_24px_rgba(0,0,0,0.5)]"
       )}
     >
-      <Handle type="target" position={Position.Top} className="-top-1.25!" />
+      {/* ── Header ──────────────────────────────────────────── */}
+      <div className="relative flex items-center gap-2 px-3 py-2.5 border-b border-white/6 nodrag">
+        {/* Left handle */}
+        <Handle
+          type="target"
+          position={Position.Left}
+          className="w-3.5! h-3.5! rounded-full! bg-[#1e1e22]! border! border-white/12! hover:border-accent/60! hover:bg-accent/10! transition-all! -left-1.75! top-3.5!"
+        />
 
-      {/* ── Header ─────────────────────────────── */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-border nodrag">
+        <div className="w-5 h-5 rounded-md bg-white/6 border border-white/8 flex items-center justify-center shrink-0">
+          <LayoutGrid size={10} className="text-white/40" />
+        </div>
+
+        {editingTitle ? (
+          <input
+            ref={titleRef}
+            value={data.title}
+            onChange={(e) => updateNodeData(id, { title: e.target.value })}
+            onBlur={() => setEditingTitle(false)}
+            onKeyDown={(e) => e.key === "Enter" && setEditingTitle(false)}
+            className="flex-1 bg-transparent text-sm text-white/80 outline-none min-w-0"
+          />
+        ) : (
+          <span
+            onDoubleClick={() => setEditingTitle(true)}
+            className="flex-1 text-sm text-white/55 truncate cursor-default select-none"
+          >
+            {data.title}
+          </span>
+        )}
+
+        <div className="flex items-center gap-0.5 ml-auto nopan">
+          <ActionBtn title="Duplicate" onClick={() => addNode({ x: 100, y: 100 })}>
+            <Copy size={12} />
+          </ActionBtn>
+          <ActionBtn title="Delete" onClick={() => removeNode(id)} danger>
+            <Trash2 size={12} />
+          </ActionBtn>
+        </div>
+
+        {/* Right handle */}
+        <Handle
+          type="source"
+          position={Position.Right}
+          className="w-3.5! h-3.5! rounded-full! bg-[#1e1e22]! border! border-white/12! hover:border-accent/60! hover:bg-accent/10! transition-all! -right-1.75! top-3.5!"
+        />
+      </div>
+
+      {/* ── Body ────────────────────────────────────────────── */}
+      <div className="nodrag nopan flex flex-col">
+        {messages.length > 0 && (
+          <div className="max-h-70 overflow-y-auto px-4 pt-3 pb-1 flex flex-col gap-2.5 border-b border-white/4">
+            {messages.map((msg) => {
+              const text = msg.parts
+                .filter((p) => p.type === "text")
+                .map((p) => (p.type === "text" ? p.text : ""))
+                .join("");
+              const isUser = msg.role === "user";
+              return (
+                <div key={msg.id} className={cn("flex gap-2.5", isUser ? "flex-row-reverse" : "flex-row")}>
+                  {!isUser && (
+                    <div className="w-4 h-4 rounded-md bg-white/5 border border-white/7 flex items-center justify-center shrink-0 mt-0.5">
+                      <Bot size={8} className="text-white/35" />
+                    </div>
+                  )}
+                  <p
+                    className={cn(
+                      "text-[12px] leading-relaxed max-w-[88%] whitespace-pre-wrap",
+                      isUser
+                        ? "text-white/70 bg-white/6 rounded-xl rounded-tr-sm px-3 py-2"
+                        : "text-white/60"
+                    )}
+                  >
+                    {text}
+                  </p>
+                </div>
+              );
+            })}
+
+            {isLoading && (
+              <div className="flex gap-2.5 items-center pb-1">
+                <div className="w-4 h-4 rounded-md bg-white/5 border border-white/7 flex items-center justify-center shrink-0">
+                  <span className="w-1 h-1 rounded-full bg-white/30 animate-pulse" />
+                </div>
+                <div className="flex items-center gap-0.75">
+                  <span className="w-1 h-1 rounded-full bg-white/25 animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1 h-1 rounded-full bg-white/25 animate-bounce [animation-delay:100ms]" />
+                  <span className="w-1 h-1 rounded-full bg-white/25 animate-bounce [animation-delay:200ms]" />
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+
+        <div className="px-4 py-3.5">
+          <textarea
+            ref={textareaRef}
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleSubmit();
+            }}
+            placeholder={isLoading ? "Waiting for response..." : "Ask a question..."}
+            disabled={isLoading}
+            rows={1}
+            className="w-full bg-transparent text-sm text-white/70 placeholder:text-white/20 outline-none resize-none disabled:opacity-40 leading-relaxed min-h-6 max-h-50 overflow-y-auto"
+          />
+        </div>
+      </div>
+
+      {/* ── Footer ──────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-3.5 py-2.5 border-t border-white/6 nodrag nopan">
         <ModelSelector
           value={data.model}
           onChange={(model) => updateNodeData(id, { model })}
         />
-        <span className="text-xs text-subtle truncate max-w-28 ml-2">
-          {data.title}
-        </span>
+        <button
+          onClick={handleSubmit}
+          disabled={isLoading || !inputValue.trim()}
+          className="flex items-center gap-2 text-xs text-white/35 hover:text-white/65 disabled:opacity-25 disabled:pointer-events-none transition-colors"
+        >
+          Ask
+          <kbd className="text-[10px] font-mono bg-white/6 border border-white/10 rounded px-1.5 py-0.5 leading-none">
+            ⌘↵
+          </kbd>
+        </button>
       </div>
-
-      {/* ── Messages ───────────────────────────── */}
-      <div className="flex-1 overflow-y-auto max-h-72 px-3 py-2 flex flex-col gap-2 nodrag nopan">
-        {messages.length === 0 ? (
-          <p className="text-xs text-subtle text-center py-6">
-            Start a conversation...
-          </p>
-        ) : (
-          messages.map((msg) => {
-            // In v6, message content is an array of parts
-            const text = msg.parts
-              .filter((p) => p.type === "text")
-              .map((p) => (p.type === "text" ? p.text : ""))
-              .join("");
-
-            return (
-              <div
-                key={msg.id}
-                className={cn(
-                  "flex items-start gap-2 text-xs leading-relaxed",
-                  msg.role === "user" ? "flex-row-reverse" : "flex-row"
-                )}
-              >
-                <div
-                  className={cn(
-                    "shrink-0 w-5 h-5 rounded-full flex items-center justify-center",
-                    msg.role === "user" ? "bg-accent-muted" : "bg-surface-2"
-                  )}
-                >
-                  {msg.role === "user" ? (
-                    <User size={10} className="text-accent" />
-                  ) : (
-                    <Bot size={10} className="text-muted" />
-                  )}
-                </div>
-                <p
-                  className={cn(
-                    "rounded-lg px-2.5 py-1.5 max-w-[85%] whitespace-pre-wrap",
-                    msg.role === "user"
-                      ? "bg-accent-muted text-text"
-                      : "bg-surface-2 text-text"
-                  )}
-                >
-                  {text}
-                </p>
-              </div>
-            );
-          })
-        )}
-
-        {isLoading && (
-          <div className="flex items-center gap-2">
-            <div className="w-5 h-5 rounded-full bg-surface-2 flex items-center justify-center">
-              <Loader2 size={10} className="text-muted animate-spin" />
-            </div>
-            <span className="text-xs text-subtle">Thinking...</span>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* ── Input ──────────────────────────────── */}
-      <form
-        onSubmit={handleSubmit}
-        className="px-3 pb-3 pt-2 border-t border-border nodrag nopan"
-      >
-        <div className="flex items-center gap-2 bg-surface-2 rounded-lg px-3 py-2 border border-border focus-within:border-border-focus transition-colors">
-          <input
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            onKeyDown={(e) =>
-              e.key === "Enter" && !e.shiftKey && handleSubmit(e)
-            }
-            placeholder={isLoading ? "Waiting..." : "Message..."}
-            disabled={isLoading}
-            className="flex-1 bg-transparent text-xs text-text placeholder:text-subtle outline-none disabled:opacity-50"
-          />
-          <button
-            type="submit"
-            disabled={isLoading || !inputValue.trim()}
-            className="text-accent hover:text-accent-hover transition-colors disabled:opacity-30"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-            </svg>
-          </button>
-        </div>
-      </form>
-
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="-bottom-1.25!"
-      />
     </div>
+  );
+}
+
+function ActionBtn({
+  children,
+  onClick,
+  title,
+  danger,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  title: string;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={cn(
+        "w-6 h-6 rounded-md flex items-center justify-center transition-all",
+        danger
+          ? "text-white/20 hover:text-red-400 hover:bg-red-400/10"
+          : "text-white/20 hover:text-white/60 hover:bg-white/6"
+      )}
+    >
+      {children}
+    </button>
   );
 }
