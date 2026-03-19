@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { Handle, Position, type NodeProps, useReactFlow } from "@xyflow/react";
-import { Trash2, Copy, Maximize2, GitBranch } from "lucide-react";
+import { Trash2, Copy, Maximize2, GitBranch, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCanvasStore, type ChatNode } from "@/lib/store";
 import { modelToProvider } from "@/lib/models";
@@ -16,20 +16,30 @@ import ModelSelector from "./ModelSelector";
 import FullScreenChat from "./FullScreenChat";
 
 type ContextMenu = { x: number; y: number; idx: number } | null;
+type SelectionTip = {
+  x: number;
+  y: number;
+  text: string;
+  msgIdx: number;
+} | null;
 
 export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
   const { updateNodeData, removeNode, addNode, addBranchNode } =
     useCanvasStore();
   const { getNode } = useReactFlow();
 
-  const [inputValue, setInputValue] = useState("");
+  const [inputValue, setInputValue] = useState(data.initialInput ?? "");
   const [editingTitle, setEditingTitle] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenu>(null);
+  const [selectionTip, setSelectionTip] = useState<SelectionTip>(null);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const selectionTipRef = useRef<HTMLDivElement>(null);
 
+  // Keep model ref in sync for the memoized transport
   const modelRef = useRef(data.model);
   useEffect(() => {
     modelRef.current = data.model;
@@ -55,21 +65,25 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
 
   const isLoading = status === "submitted" || status === "streaming";
 
-  // branchDepth = number of leading messages that are hidden context (inherited from parent)
   const branchDepth = data.branchDepth ?? 0;
-  // What the user sees: only messages after the inherited context
   const visibleMessages = messages.slice(branchDepth);
+  const isBranched = branchDepth > 0;
 
+  // ── Side effects ────────────────────────────────────────────────────────────
+
+  // Persist messages when a streaming turn finishes
   useEffect(() => {
     if (status === "ready" && messages.length > 0)
       updateNodeData(id, { messages });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
+  // Scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Auto-size textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -77,10 +91,12 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
     }
   }, [inputValue]);
 
+  // Focus title input when entering edit mode
   useEffect(() => {
     if (editingTitle) titleRef.current?.select();
   }, [editingTitle]);
 
+  // Close context menu on next click
   useEffect(() => {
     if (!contextMenu) return;
     const close = () => setContextMenu(null);
@@ -88,8 +104,42 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
     return () => window.removeEventListener("click", close);
   }, [contextMenu]);
 
+  // Close selection tip on outside mousedown (but not on the tip itself)
+  useEffect(() => {
+    if (!selectionTip) return;
+    const dismiss = (e: MouseEvent) => {
+      if (selectionTipRef.current?.contains(e.target as Node)) return;
+      setSelectionTip(null);
+    };
+    document.addEventListener("mousedown", dismiss);
+    return () => document.removeEventListener("mousedown", dismiss);
+  }, [selectionTip]);
+
+  // If this node was created from a text selection, consume the pre-filled input
+  useEffect(() => {
+    if (data.initialInput) {
+      updateNodeData(id, { initialInput: undefined });
+      // Brief delay so the node finishes mounting before focus
+      setTimeout(() => textareaRef.current?.focus(), 150);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Handlers ────────────────────────────────────────────────────────────────
+
   const handleSubmit = () => {
     if (!inputValue.trim() || isLoading) return;
+
+    // Auto-title: set a meaningful node title from the first message
+    // Avoids "New Chat" / "Branch" persisting once conversation starts
+    const isGenericTitle = data.title === "New Chat" || data.title === "Branch";
+    if (isGenericTitle && visibleMessages.length === 0) {
+      const words = inputValue.trim().split(/\s+/).slice(0, 4).join(" ");
+      updateNodeData(id, {
+        title: words.length > 28 ? words.slice(0, 28) + "…" : words,
+      });
+    }
+
     sendMessage({ text: inputValue.trim() });
     setInputValue("");
   };
@@ -97,7 +147,6 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
   const handleBranch = (visibleIdx: number) => {
     const node = getNode(id);
     if (!node) return;
-    // Branch includes the context + everything up to the right-clicked message
     const absoluteIdx = branchDepth + visibleIdx;
     addBranchNode(
       { x: node.position.x + 560, y: node.position.y + 80 },
@@ -108,22 +157,86 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
     setContextMenu(null);
   };
 
+  // Detect text selection inside the messages area → show floating branch tip
+  const handleTextMouseUp = useCallback(() => {
+    requestAnimationFrame(() => {
+      const sel = window.getSelection();
+      if (!sel || sel.isCollapsed) {
+        setSelectionTip(null);
+        return;
+      }
+
+      const text = sel.toString().trim();
+      if (!text) {
+        setSelectionTip(null);
+        return;
+      }
+
+      // Walk up from selection anchor to find the [data-msg-idx] element
+      let el: Node | null = sel.anchorNode;
+      let msgIdx: number | null = null;
+      while (el) {
+        if (el instanceof HTMLElement && el.dataset.msgIdx !== undefined) {
+          msgIdx = parseInt(el.dataset.msgIdx);
+          break;
+        }
+        el = el.parentNode;
+      }
+      if (msgIdx === null) return;
+
+      const range = sel.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      if (!rect.width) return;
+
+      setSelectionTip({
+        x: rect.left + rect.width / 2,
+        y: rect.top,
+        text,
+        msgIdx,
+      });
+    });
+  }, []);
+
+  const handleBranchFromSelection = () => {
+    if (!selectionTip) return;
+    const node = getNode(id);
+    if (!node) return;
+    const absoluteIdx = branchDepth + selectionTip.msgIdx;
+    // Blockquote prefix makes it clear to the LLM what the user is referencing
+    const initialInput = `> ${selectionTip.text}\n\n`;
+    addBranchNode(
+      { x: node.position.x + 560, y: node.position.y + 80 },
+      id,
+      messages.slice(0, absoluteIdx + 1),
+      data.model,
+      initialInput
+    );
+    setSelectionTip(null);
+    window.getSelection()?.removeAllRanges();
+  };
+
+  console.log(visibleMessages);
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+
   return (
     <>
       <div
         className={cn(
-          "w-125 flex flex-col rounded-xl",
-          "bg-[#0f0d0e] transition-shadow duration-200",
-          selected
-            ? "border border-accent/25 shadow-[0_0_0_1px_rgba(192,52,29,0.08),0_12px_48px_rgba(0,0,0,0.8)]"
-            : "border border-white/6 shadow-[0_4px_32px_rgba(0,0,0,0.6),0_1px_0_rgba(255,255,255,0.03)_inset]"
+          "cn-node w-125 flex flex-col rounded-xl",
+          selected && "cn-node-sel"
         )}
       >
-        {/* Accent top line */}
-        <div className="h-px shrink-0 bg-linear-to-r from-accent/0 via-accent/40 to-accent/0" />
+        {/* Accent top bar */}
+        <div className="cn-bar h-px shrink-0" />
 
-        {/* ── Header — drag handle ─────────────────────────── */}
-        <div className="node-drag-handle relative flex items-center gap-2 px-3 py-2.5 cursor-grab active:cursor-grabbing">
+        {/* ── Header ─────────────────────────────────────────── */}
+        {/*
+          Entire header = React Flow drag zone (node-drag-handle).
+          cursor-grab on the zone, individual elements override where needed.
+        */}
+        <div className="node-drag-handle relative flex items-center gap-1.5 px-3 py-2.5 cursor-grab active:cursor-grabbing">
+          {/* Left handle — incoming connections */}
           <Handle
             type="target"
             position={Position.Left}
@@ -134,6 +247,13 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
             }}
           />
 
+          {/* Drag affordance — visual signal, no pointer events */}
+          <GripVertical
+            size={12}
+            className="cn-grip-icon shrink-0 pointer-events-none select-none"
+          />
+
+          {/* Title */}
           {editingTitle ? (
             <input
               ref={titleRef}
@@ -141,32 +261,66 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
               onChange={(e) => updateNodeData(id, { title: e.target.value })}
               onBlur={() => setEditingTitle(false)}
               onKeyDown={(e) => e.key === "Enter" && setEditingTitle(false)}
-              className="nodrag flex-1 bg-transparent text-[13px] font-medium text-white/80 outline-none min-w-0 cursor-text"
+              className="cn-title-input nodrag flex-1 bg-transparent text-[13px] font-medium outline-none min-w-0 "
             />
           ) : (
             <span
               onDoubleClick={() => setEditingTitle(true)}
-              className="flex-1 text-[13px] font-medium text-white/50 truncate select-none"
+              className="cn-title-text flex-1 text-[13px] font-medium w-fit truncate select-none cursor-text"
             >
               {data.title}
             </span>
           )}
 
+          {/*
+            Context indicator — shows when this node has inherited context.
+            Design principle: NO raw counts, NO internal jargon in the chat body.
+            A subtle icon in the header; tooltip on hover reveals human-readable info.
+          */}
+          {isBranched && (
+            <div className="nodrag nopan relative group shrink-0 cursor-default">
+              <div className="w-5 h-5 flex items-center justify-center rounded-md">
+                <GitBranch
+                  size={9}
+                  className="transition-colors duration-150"
+                  style={{ color: "var(--cn-grip)" }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.color = "rgba(192,52,29,0.50)")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.color = "var(--cn-grip)")
+                  }
+                />
+              </div>
+              {/* Tooltip */}
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-50">
+                <div className="cn-tip-box rounded-lg px-2.5 py-1.5 shadow-2xl whitespace-nowrap">
+                  <p className="cn-tip-text text-[10.5px] leading-none">
+                    Using prior context
+                  </p>
+                </div>
+                <div className="cn-tip-arrow-down" />
+              </div>
+            </div>
+          )}
+
+          {/* Action buttons */}
           <div className="nodrag nopan flex items-center gap-0.5 ml-auto">
-            <ActionBtn title="Full screen" onClick={() => setFullScreen(true)}>
+            <HeaderBtn title="Full screen" onClick={() => setFullScreen(true)}>
               <Maximize2 size={11} />
-            </ActionBtn>
-            <ActionBtn
+            </HeaderBtn>
+            <HeaderBtn
               title="Duplicate"
               onClick={() => addNode({ x: 100, y: 100 })}
             >
               <Copy size={11} />
-            </ActionBtn>
-            <ActionBtn title="Delete" onClick={() => removeNode(id)} danger>
+            </HeaderBtn>
+            <HeaderBtn title="Delete" onClick={() => removeNode(id)} danger>
               <Trash2 size={11} />
-            </ActionBtn>
+            </HeaderBtn>
           </div>
 
+          {/* Right handle — outgoing connections */}
           <Handle
             type="source"
             position={Position.Right}
@@ -175,26 +329,27 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
         </div>
 
         {/* Divider */}
-        <div className="h-px bg-white/5 mx-3" />
+        <div className="cn-divider h-px mx-3" />
 
-        {/* ── Body ─────────────────────────────────────────── */}
+        {/* ── Body ───────────────────────────────────────────── */}
         <div className="nodrag nopan flex flex-col">
-          {/* Branch context indicator */}
-          {branchDepth > 0 && (
-            <div className="flex items-center gap-1.5 px-4 pt-3 pb-1">
-              <GitBranch size={9} className="text-accent/50 shrink-0" />
-              <span className="text-[10.5px] text-white/25">
-                {branchDepth} message{branchDepth !== 1 ? "s" : ""} of context
-                inherited
-              </span>
-            </div>
-          )}
-
           {/* Messages */}
           {visibleMessages.length > 0 && (
             <div
-              className="nowheel nodrag nopan chat-scroll max-h-150 overflow-y-auto px-4 py-4 flex flex-col gap-5"
+              /*
+                cn-messages applies: user-select: text !important; cursor: text !important;
+                This is the canonical override for React Flow's user-select: none.
+                Also add inline style as belt-and-suspenders for specificity.
+              */
+              className="cn-messages nowheel nodrag nopan chat-scroll max-h-150 overflow-y-auto px-4 py-2 flex flex-col"
+              style={
+                {
+                  userSelect: "text",
+                  WebkitUserSelect: "text",
+                } as React.CSSProperties
+              }
               onWheel={(e) => e.stopPropagation()}
+              onMouseUp={handleTextMouseUp}
             >
               {visibleMessages.map((msg, idx) => {
                 const text = msg.parts
@@ -206,31 +361,26 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
                 return (
                   <div
                     key={msg.id}
+                    data-msg-idx={idx}
                     onContextMenu={(e) => {
                       e.preventDefault();
+                      setSelectionTip(null);
                       setContextMenu({ x: e.clientX, y: e.clientY, idx });
                     }}
                   >
                     {isUser ? (
-                      <p className="text-[12px] text-white/35 leading-relaxed italic">
+                      <p className="cn-msg-user text-[12px] leading-relaxed italic">
                         {text}
                       </p>
                     ) : (
-                      <div className="text-[12.5px] text-white/75 leading-[1.75]">
-                        <MarkdownMessage content={text} />
-                      </div>
+                      <MarkdownMessage content={text} />
                     )}
                   </div>
                 );
               })}
 
-              {isLoading && (
-                <div className="flex items-center gap-1.5 py-1">
-                  <span className="w-1 h-1 rounded-full bg-accent/60 animate-bounce [animation-delay:0ms]" />
-                  <span className="w-1 h-1 rounded-full bg-accent/60 animate-bounce [animation-delay:120ms]" />
-                  <span className="w-1 h-1 rounded-full bg-accent/60 animate-bounce [animation-delay:240ms]" />
-                </div>
-              )}
+              {isLoading && <LoadingDots />}
+
               <div ref={messagesEndRef} />
             </div>
           )}
@@ -246,16 +396,16 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
                   handleSubmit();
               }}
               placeholder={
-                isLoading ? "Waiting for response..." : "Ask a question..."
+                isLoading ? "Waiting for response…" : "Ask anything…"
               }
               disabled={isLoading}
               rows={1}
-              className="w-full bg-transparent text-sm text-white/65 placeholder:text-white/18 outline-none resize-none disabled:opacity-40 leading-relaxed min-h-6 max-h-50 overflow-y-auto"
+              className="cn-input-area w-full bg-transparent text-sm outline-none resize-none disabled:opacity-40 leading-relaxed min-h-6 max-h-50 overflow-y-auto cursor-text"
             />
           </div>
         </div>
 
-        {/* ── Footer ───────────────────────────────────────── */}
+        {/* ── Footer ─────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-3.5 pb-3 nodrag nopan">
           <ModelSelector
             value={data.model}
@@ -264,10 +414,16 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
           <button
             onClick={handleSubmit}
             disabled={isLoading || !inputValue.trim()}
-            className="flex items-center gap-1.5 text-[11px] text-white/80 hover:text-white/60 disabled:opacity-20 disabled:pointer-events-none transition-colors"
+            className="cn-btn flex items-center gap-1.5 text-[11px] disabled:opacity-20 disabled:pointer-events-none"
           >
-            Ask
-            <kbd className="font-mono bg-white/5 border border-white/8 rounded px-1.5 py-0.5 leading-none text-[10px]">
+            Send
+            <kbd
+              className="font-mono rounded px-1.5 py-0.5 leading-none text-[10px]"
+              style={{
+                background: "var(--cn-icon-bg)",
+                border: "1px solid var(--cn-border)",
+              }}
+            >
               ⌘↵
             </kbd>
           </button>
@@ -288,22 +444,44 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
         isLoading={isLoading}
       />
 
-      {/* ── Branch context menu ───────────────────────────── */}
+      {/* ── Right-click context menu ──────────────────────── */}
       {contextMenu &&
         typeof document !== "undefined" &&
         createPortal(
           <div
-            className="fixed z-9998 bg-surface border border-white/10 rounded-lg shadow-2xl py-1 min-w-42"
+            className="cn-ctx-menu fixed z-9998 rounded-lg shadow-2xl py-1 min-w-42"
             style={{ left: contextMenu.x, top: contextMenu.y }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               onClick={() => handleBranch(contextMenu.idx)}
-              className="w-full px-3 py-2 text-left text-[12px] text-white/55 hover:text-white/90 hover:bg-white/5 transition-colors flex items-center gap-2"
+              className="cn-ctx-item w-full px-3 py-2 text-left text-[12px] flex items-center gap-2"
             >
-              <GitBranch size={11} className="text-accent" />
+              <GitBranch size={11} className="text-accent shrink-0" />
               Branch from here
             </button>
+          </div>,
+          document.body
+        )}
+
+      {/* ── Text-selection branch tip ─────────────────────── */}
+      {selectionTip &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            ref={selectionTipRef}
+            className="fixed z-9999 -translate-x-1/2 -translate-y-full pointer-events-auto"
+            style={{ left: selectionTip.x, top: selectionTip.y - 10 }}
+          >
+            <button
+              onMouseDown={(e) => e.preventDefault()} // prevent selection clearing
+              onClick={handleBranchFromSelection}
+              className="cn-sel-tip flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg shadow-2xl text-[11px] whitespace-nowrap"
+            >
+              <GitBranch size={10} className="text-accent shrink-0" />
+              Branch from selection
+            </button>
+            <div className="cn-sel-tip-arrow" />
           </div>,
           document.body
         )}
@@ -312,82 +490,57 @@ export default function ChatNode({ id, data, selected }: NodeProps<ChatNode>) {
 }
 
 // ── Markdown renderer ─────────────────────────────────────────────────────────
+// Uses .cn-md CSS class for all color theming — no hardcoded colors here.
 function MarkdownMessage({ content }: { content: string }) {
   return (
-    <ReactMarkdown
-      remarkPlugins={[remarkGfm]}
-      components={{
-        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-        strong: ({ children }) => (
-          <strong className="font-semibold text-white/92">{children}</strong>
-        ),
-        em: ({ children }) => (
-          <em className="italic text-white/60">{children}</em>
-        ),
-        pre: ({ children }) => (
-          <pre className="bg-white/4 border border-white/6 rounded-lg px-3 py-2.5 overflow-x-auto my-2.5 text-[11px] font-mono text-white/65">
-            {children}
-          </pre>
-        ),
-        code: ({ className, children }) =>
-          className ? (
-            <code>{children}</code>
-          ) : (
-            <code className="font-mono text-[11px] bg-white/8 text-accent px-1.5 py-0.5 rounded-sm">
-              {children}
-            </code>
+    <div className="cn-msg-ai cn-md text-[12.5px] leading-[1.75]">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+          strong: ({ children }) => <strong>{children}</strong>,
+          em: ({ children }) => <em>{children}</em>,
+          pre: ({ children }) => <pre>{children}</pre>,
+          code: ({ className, children }) =>
+            className ? <code>{children}</code> : <code>{children}</code>,
+          ul: ({ children }) => (
+            <ul className="space-y-0.5 my-1.5">{children}</ul>
           ),
-        ul: ({ children }) => (
-          <ul className="list-disc list-inside space-y-0.5 my-1.5 pl-1 text-white/70">
-            {children}
-          </ul>
-        ),
-        ol: ({ children }) => (
-          <ol className="list-decimal list-inside space-y-0.5 my-1.5 pl-1 text-white/70">
-            {children}
-          </ol>
-        ),
-        li: ({ children }) => <li>{children}</li>,
-        h1: ({ children }) => (
-          <h1 className="text-[13.5px] font-semibold text-white/90 mt-3 mb-1">
-            {children}
-          </h1>
-        ),
-        h2: ({ children }) => (
-          <h2 className="text-[13px] font-semibold text-white/85 mt-2.5 mb-1">
-            {children}
-          </h2>
-        ),
-        h3: ({ children }) => (
-          <h3 className="text-[12.5px] font-semibold text-white/80 mt-2 mb-0.5">
-            {children}
-          </h3>
-        ),
-        blockquote: ({ children }) => (
-          <blockquote className="border-l-2 border-accent/40 pl-3 my-2 text-white/50 italic">
-            {children}
-          </blockquote>
-        ),
-        a: ({ href, children }) => (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-accent/80 hover:text-accent underline underline-offset-2 decoration-accent/30"
-          >
-            {children}
-          </a>
-        ),
-        hr: () => <hr className="border-white/8 my-3" />,
-      }}
-    >
-      {content}
-    </ReactMarkdown>
+          ol: ({ children }) => (
+            <ol className="space-y-0.5 my-1.5">{children}</ol>
+          ),
+          li: ({ children }) => <li>{children}</li>,
+          h1: ({ children }) => <h1>{children}</h1>,
+          h2: ({ children }) => <h2>{children}</h2>,
+          h3: ({ children }) => <h3>{children}</h3>,
+          blockquote: ({ children }) => <blockquote>{children}</blockquote>,
+          a: ({ href, children }) => (
+            <a href={href} target="_blank" rel="noopener noreferrer">
+              {children}
+            </a>
+          ),
+          hr: () => <hr />,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
   );
 }
 
-// ── Action button ─────────────────────────────────────────────────────────────
-function ActionBtn({
+// ── Loading dots ──────────────────────────────────────────────────────────────
+function LoadingDots() {
+  return (
+    <div className="flex items-center gap-1.5 py-1">
+      <span className="w-1 h-1 rounded-full bg-accent/60 animate-bounce [animation-delay:0ms]" />
+      <span className="w-1 h-1 rounded-full bg-accent/60 animate-bounce [animation-delay:120ms]" />
+      <span className="w-1 h-1 rounded-full bg-accent/60 animate-bounce [animation-delay:240ms]" />
+    </div>
+  );
+}
+
+// ── Header action button ──────────────────────────────────────────────────────
+function HeaderBtn({
   children,
   onClick,
   title,
@@ -403,10 +556,8 @@ function ActionBtn({
       onClick={onClick}
       title={title}
       className={cn(
-        "w-6 h-6 rounded-md flex items-center justify-center transition-all",
-        danger
-          ? "text-white/18 hover:text-red-400 hover:bg-red-400/8"
-          : "text-white/18 hover:text-white/55 hover:bg-white/5"
+        "cn-btn w-6 h-6 rounded-md flex items-center justify-center",
+        danger && "cn-btn-danger"
       )}
     >
       {children}

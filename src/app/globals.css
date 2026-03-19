@@ -1,29 +1,170 @@
 @import "tailwindcss";
 
-/* ─── Design tokens ──────────────────────────────────────────── */
+/* ─── Custom dark variant — responds to data-theme="dark" on <html> ─ */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+/* ─── Design tokens (Tailwind v4) ────────────────────────────── */
 @theme {
-  /* Backgrounds — warm near-black, Sova-inspired */
-  --color-canvas: #09080a;
-  --color-surface: #0f0d10;
+  /* Backgrounds */
+  --color-canvas:    #09080a;
+  --color-surface:   #0f0d10;
   --color-surface-2: #161318;
 
   /* Borders */
-  --color-border: rgba(255, 255, 255, 0.07);
+  --color-border:       rgba(255, 255, 255, 0.07);
   --color-border-focus: rgba(255, 255, 255, 0.16);
 
   /* Text */
-  --color-text: #f0ede8;
-  --color-muted: #7a6f68;
+  --color-text:   #f0ede8;
+  --color-muted:  #7a6f68;
   --color-subtle: #4a4040;
 
   /* Accent — deep ember red */
-  --color-accent: #c0341d;
+  --color-accent:       #c0341d;
   --color-accent-hover: #e04e35;
   --color-accent-muted: rgba(192, 52, 29, 0.12);
 
   /* Fonts */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+/* ─── Chat Node CSS variables (dark defaults) ────────────────── */
+/*
+  All ChatNode colors are driven by these variables.
+  Light mode overrides them in [data-theme="light"].
+  This gives clean theming without touching JSX.
+*/
+:root {
+  /* Node shell */
+  --cn-bg:            #0f0d0e;
+  --cn-border:        rgba(255, 255, 255, 0.06);
+  --cn-shadow:        0 4px 32px rgba(0, 0, 0, 0.60), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  --cn-shadow-sel:    0 0 0 1px rgba(192, 52, 29, 0.08), 0 12px 48px rgba(0, 0, 0, 0.80);
+  --cn-border-sel:    rgba(192, 52, 29, 0.25);
+  --cn-accent-bar:    linear-gradient(to right, transparent, rgba(192, 52, 29, 0.40), transparent);
+  --cn-divider:       rgba(255, 255, 255, 0.05);
+
+  /* Header chrome */
+  --cn-grip:          rgba(255, 255, 255, 0.12);
+  --cn-title:         rgba(255, 255, 255, 0.50);
+  --cn-title-active:  rgba(255, 255, 255, 0.80);
+  --cn-icon:          rgba(255, 255, 255, 0.18);
+  --cn-icon-hover:    rgba(255, 255, 255, 0.55);
+  --cn-icon-bg:       rgba(255, 255, 255, 0.05);
+
+  /* Messages */
+  --cn-user:          rgba(255, 255, 255, 0.30);
+  --cn-ai:            rgba(255, 255, 255, 0.75);
+
+  /* Markdown elements */
+  --cn-md-strong:     rgba(255, 255, 255, 0.92);
+  --cn-md-em:         rgba(255, 255, 255, 0.58);
+  --cn-md-code-bg:    rgba(255, 255, 255, 0.04);
+  --cn-md-code-br:    rgba(255, 255, 255, 0.06);
+  --cn-md-inline-bg:  rgba(255, 255, 255, 0.08);
+  --cn-md-list:       rgba(255, 255, 255, 0.68);
+  --cn-md-h:          rgba(255, 255, 255, 0.90);
+  --cn-md-bq-text:    rgba(255, 255, 255, 0.48);
+  --cn-md-bq-br:      rgba(192, 52, 29, 0.40);
+  --cn-md-hr:         rgba(255, 255, 255, 0.07);
+  --cn-md-link:       rgba(192, 52, 29, 0.85);
+
+  /* Input area */
+  --cn-input:         rgba(255, 255, 255, 0.65);
+  --cn-placeholder:   rgba(255, 255, 255, 0.18);
+
+  /* Context indicator tooltip */
+  --cn-tip-bg:        #1c1719;
+  --cn-tip-br:        rgba(255, 255, 255, 0.09);
+  --cn-tip-text:      rgba(255, 255, 255, 0.52);
+  --cn-tip-arrow:     rgba(255, 255, 255, 0.09);
+
+  /* Context (right-click) menu */
+  --cn-ctx-bg:        #0f0d0e;
+  --cn-ctx-br:        rgba(255, 255, 255, 0.10);
+  --cn-ctx-text:      rgba(255, 255, 255, 0.55);
+  --cn-ctx-hover:     rgba(255, 255, 255, 0.90);
+  --cn-ctx-hover-bg:  rgba(255, 255, 255, 0.05);
+
+  /* Selection branch tip */
+  --cn-sel-bg:        #1a1315;
+  --cn-sel-br:        rgba(255, 255, 255, 0.12);
+  --cn-sel-text:      rgba(255, 255, 255, 0.65);
+  --cn-sel-hover-bg:  #1e1618;
+  --cn-sel-hover-br:  rgba(192, 52, 29, 0.35);
+}
+
+/* ─── Light mode overrides ───────────────────────────────────── */
+[data-theme="light"] {
+  /* Tailwind token overrides */
+  --color-canvas:       #f2f0ed;
+  --color-surface:      #ffffff;
+  --color-surface-2:    #f7f5f3;
+  --color-border:       rgba(0, 0, 0, 0.07);
+  --color-border-focus: rgba(0, 0, 0, 0.15);
+  --color-text:         #1c1917;
+  --color-muted:        #78716c;
+  --color-subtle:       #a8a29e;
+  --color-accent-muted: rgba(192, 52, 29, 0.08);
+
+  /* Node shell */
+  --cn-bg:            #ffffff;
+  --cn-border:        rgba(0, 0, 0, 0.08);
+  --cn-shadow:        0 2px 16px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.05);
+  --cn-shadow-sel:    0 0 0 1px rgba(192, 52, 29, 0.15), 0 8px 32px rgba(0, 0, 0, 0.10);
+  --cn-border-sel:    rgba(192, 52, 29, 0.22);
+  --cn-accent-bar:    linear-gradient(to right, transparent, rgba(192, 52, 29, 0.28), transparent);
+  --cn-divider:       rgba(0, 0, 0, 0.06);
+
+  /* Header chrome */
+  --cn-grip:          rgba(0, 0, 0, 0.12);
+  --cn-title:         rgba(0, 0, 0, 0.50);
+  --cn-title-active:  rgba(0, 0, 0, 0.80);
+  --cn-icon:          rgba(0, 0, 0, 0.22);
+  --cn-icon-hover:    rgba(0, 0, 0, 0.62);
+  --cn-icon-bg:       rgba(0, 0, 0, 0.05);
+
+  /* Messages */
+  --cn-user:          rgba(0, 0, 0, 0.35);
+  --cn-ai:            rgba(0, 0, 0, 0.78);
+
+  /* Markdown elements */
+  --cn-md-strong:     rgba(0, 0, 0, 0.92);
+  --cn-md-em:         rgba(0, 0, 0, 0.55);
+  --cn-md-code-bg:    rgba(0, 0, 0, 0.03);
+  --cn-md-code-br:    rgba(0, 0, 0, 0.07);
+  --cn-md-inline-bg:  rgba(0, 0, 0, 0.06);
+  --cn-md-list:       rgba(0, 0, 0, 0.68);
+  --cn-md-h:          rgba(0, 0, 0, 0.90);
+  --cn-md-bq-text:    rgba(0, 0, 0, 0.45);
+  --cn-md-bq-br:      rgba(192, 52, 29, 0.35);
+  --cn-md-hr:         rgba(0, 0, 0, 0.08);
+  --cn-md-link:       #c0341d;
+
+  /* Input area */
+  --cn-input:         rgba(0, 0, 0, 0.68);
+  --cn-placeholder:   rgba(0, 0, 0, 0.26);
+
+  /* Tooltip */
+  --cn-tip-bg:        #f7f5f3;
+  --cn-tip-br:        rgba(0, 0, 0, 0.08);
+  --cn-tip-text:      rgba(0, 0, 0, 0.52);
+  --cn-tip-arrow:     rgba(0, 0, 0, 0.08);
+
+  /* Context menu */
+  --cn-ctx-bg:        #ffffff;
+  --cn-ctx-br:        rgba(0, 0, 0, 0.09);
+  --cn-ctx-text:      rgba(0, 0, 0, 0.55);
+  --cn-ctx-hover:     rgba(0, 0, 0, 0.88);
+  --cn-ctx-hover-bg:  rgba(0, 0, 0, 0.04);
+
+  /* Selection tip */
+  --cn-sel-bg:        #ffffff;
+  --cn-sel-br:        rgba(0, 0, 0, 0.10);
+  --cn-sel-text:      rgba(0, 0, 0, 0.62);
+  --cn-sel-hover-bg:  #f7f5f3;
+  --cn-sel-hover-br:  rgba(192, 52, 29, 0.30);
 }
 
 /* ─── Base ───────────────────────────────────────────────────── */
@@ -40,23 +181,263 @@ body {
   color: var(--color-text);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  transition: background 0.2s, color 0.2s;
+}
+
+/* ─── Chat Node semantic classes ─────────────────────────────── */
+/*
+  Colors live here. Layout stays in Tailwind.
+  This separation keeps JSX clean and theming trivial.
+*/
+
+.cn-node {
+  background: var(--cn-bg);
+  border: 1px solid var(--cn-border);
+  box-shadow: var(--cn-shadow);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.cn-node-sel {
+  border-color: var(--cn-border-sel) !important;
+  box-shadow: var(--cn-shadow-sel) !important;
+}
+
+.cn-bar {
+  background: var(--cn-accent-bar);
+}
+
+.cn-divider {
+  background: var(--cn-divider);
+}
+
+.cn-grip-icon {
+  color: var(--cn-grip);
+}
+
+.cn-title-text {
+  color: var(--cn-title);
+  transition: color 0.15s;
+}
+
+.cn-title-input {
+  color: var(--cn-title-active);
+}
+
+/* ── Messages — text MUST be selectable ─────────────────────── */
+/*
+  React Flow sets user-select: none on .xy-flow__node.
+  We use !important here to definitively override it.
+  This is the canonical fix — do not remove.
+*/
+.cn-messages {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  cursor: text !important;
+}
+
+.cn-msg-user {
+  color: var(--cn-user);
+}
+
+.cn-msg-ai {
+  color: var(--cn-ai);
+}
+
+/* ── Markdown content ────────────────────────────────────────── */
+.cn-md strong {
+  color: var(--cn-md-strong);
+  font-weight: 600;
+}
+
+.cn-md em {
+  color: var(--cn-md-em);
+  font-style: italic;
+}
+
+.cn-md pre {
+  background: var(--cn-md-code-bg);
+  border: 1px solid var(--cn-md-code-br);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+  margin: 10px 0;
+  font-size: 11px;
+  font-family: var(--font-mono), monospace;
+  color: var(--cn-ai);
+  line-height: 1.6;
+}
+
+.cn-md :not(pre) > code {
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  background: var(--cn-md-inline-bg);
+  color: var(--color-accent);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.cn-md ul {
+  list-style-type: disc;
+  list-style-position: inside;
+  color: var(--cn-md-list);
+  margin: 6px 0;
+  padding-left: 4px;
+}
+
+.cn-md ol {
+  list-style-type: decimal;
+  list-style-position: inside;
+  color: var(--cn-md-list);
+  margin: 6px 0;
+  padding-left: 4px;
+}
+
+.cn-md li + li {
+  margin-top: 2px;
+}
+
+.cn-md h1 { color: var(--cn-md-h); font-size: 13.5px; font-weight: 600; margin: 12px 0 4px; }
+.cn-md h2 { color: var(--cn-md-h); font-size: 13px;   font-weight: 600; margin: 10px 0 4px; }
+.cn-md h3 { color: var(--cn-md-h); font-size: 12.5px; font-weight: 600; margin: 8px  0 2px; }
+
+.cn-md blockquote {
+  border-left: 2px solid var(--cn-md-bq-br);
+  color: var(--cn-md-bq-text);
+  padding-left: 12px;
+  margin: 8px 0;
+  font-style: italic;
+}
+
+.cn-md a {
+  color: var(--cn-md-link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: color-mix(in srgb, var(--cn-md-link) 35%, transparent);
+}
+
+.cn-md a:hover {
+  text-decoration-color: var(--cn-md-link);
+}
+
+.cn-md hr {
+  border: none;
+  border-top: 1px solid var(--cn-md-hr);
+  margin: 12px 0;
+}
+
+/* ── Input ───────────────────────────────────────────────────── */
+.cn-input-area {
+  color: var(--cn-input);
+}
+
+.cn-input-area::placeholder {
+  color: var(--cn-placeholder);
+}
+
+/* ── Header action buttons ───────────────────────────────────── */
+.cn-btn {
+  color: var(--cn-icon);
+  transition: color 0.15s, background 0.15s;
+}
+
+.cn-btn:hover {
+  color: var(--cn-icon-hover);
+  background: var(--cn-icon-bg);
+}
+
+.cn-btn-danger:hover {
+  color: #f87171 !important;
+  background: rgba(248, 113, 113, 0.09) !important;
+}
+
+/* ── Context inheritance tooltip ─────────────────────────────── */
+.cn-tip-box {
+  background: var(--cn-tip-bg);
+  border: 1px solid var(--cn-tip-br);
+}
+
+.cn-tip-text {
+  color: var(--cn-tip-text);
+}
+
+.cn-tip-arrow-down {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid var(--cn-tip-arrow);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 100%;
+}
+
+/* ── Right-click context menu ────────────────────────────────── */
+.cn-ctx-menu {
+  background: var(--cn-ctx-bg);
+  border: 1px solid var(--cn-ctx-br);
+}
+
+.cn-ctx-item {
+  color: var(--cn-ctx-text);
+  transition: color 0.12s, background 0.12s;
+}
+
+.cn-ctx-item:hover {
+  color: var(--cn-ctx-hover);
+  background: var(--cn-ctx-hover-bg);
+}
+
+/* ── Selection branch tip ────────────────────────────────────── */
+.cn-sel-tip {
+  background: var(--cn-sel-bg);
+  border: 1px solid var(--cn-sel-br);
+  color: var(--cn-sel-text);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.cn-sel-tip:hover {
+  background: var(--cn-sel-hover-bg);
+  border-color: var(--cn-sel-hover-br);
+  color: var(--cn-ai);
+}
+
+.cn-sel-tip-arrow {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid var(--cn-sel-br);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 100%;
 }
 
 /* ─── React Flow canvas ──────────────────────────────────────── */
 .react-flow__background {
   background: var(--color-canvas) !important;
+  transition: background 0.2s;
 }
 
-/* Dot grid — very subtle warm dots */
 .react-flow__background pattern circle {
   fill: #1e1a1c;
+  transition: fill 0.2s;
+}
+
+[data-theme="light"] .react-flow__background pattern circle {
+  fill: #d8d4d0;
 }
 
 /* ─── Edges ──────────────────────────────────────────────────── */
 .react-flow__edge-path {
   stroke: #2e2228;
-  stroke-width: 1;
+  stroke-width: 1.25;
   transition: stroke 0.2s;
+}
+
+[data-theme="light"] .react-flow__edge-path {
+  stroke: #c8c4c0;
 }
 
 .react-flow__edge:hover .react-flow__edge-path,
@@ -65,16 +446,13 @@ body {
   stroke-width: 1.5;
 }
 
-/* Thread — the live connection line while dragging */
 .react-flow__connection-path {
   stroke: var(--color-accent);
   stroke-width: 0.75;
   opacity: 0.55;
-  stroke-dasharray: none;
 }
 
 /* ─── Handles ────────────────────────────────────────────────── */
-/* Base styles — overridden per-node by ChatNode Tailwind classes */
 .react-flow__handle {
   border-radius: 50%;
   transition: opacity 0.15s, transform 0.15s;
@@ -99,20 +477,20 @@ body {
 .react-flow__controls-button {
   width: 28px !important;
   height: 28px !important;
-  background: #0f0d10 !important;
-  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  background: var(--color-surface) !important;
+  border: 1px solid var(--color-border) !important;
   border-radius: 8px !important;
-  fill: rgba(255, 255, 255, 0.3) !important;
+  fill: var(--color-muted) !important;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s;
+  transition: background 0.15s, fill 0.15s, border-color 0.15s;
 }
 
 .react-flow__controls-button:hover {
-  background: #161318 !important;
-  fill: rgba(255, 255, 255, 0.7) !important;
-  border-color: rgba(255, 255, 255, 0.13) !important;
+  background: var(--color-surface-2) !important;
+  fill: var(--color-text) !important;
+  border-color: var(--color-border-focus) !important;
 }
 
 /* ─── Selection box ──────────────────────────────────────────── */
@@ -121,12 +499,12 @@ body {
   border: 1px solid rgba(192, 52, 29, 0.3);
 }
 
-/* ─── Remove React Flow's default node chrome ────────────────── */
+/* ─── Remove default node chrome ─────────────────────────────── */
 .xy-flow__node {
   filter: none !important;
 }
 
-/* ─── Thin custom scrollbar for chat areas ───────────────────── */
+/* ─── Scrollbar — thin, themed ───────────────────────────────── */
 .chat-scroll::-webkit-scrollbar {
   width: 3px;
 }
@@ -142,4 +520,12 @@ body {
 
 .chat-scroll::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.14);
+}
+
+[data-theme="light"] .chat-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.10);
+}
+
+[data-theme="light"] .chat-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.18);
 }

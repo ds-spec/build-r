@@ -18,6 +18,8 @@ export type ChatNodeData = {
   messages: UIMessage[];
   // How many leading messages are inherited context (hidden from UI, used for LLM history)
   branchDepth?: number;
+  // Pre-fills the textarea when a branch node is first mounted (consumed once)
+  initialInput?: string;
 };
 
 // Extend React Flow's Node type with our data shape
@@ -39,7 +41,8 @@ type CanvasStore = {
     position: { x: number; y: number },
     sourceNodeId: string,
     messages: UIMessage[],
-    model: string
+    model: string,
+    initialInput?: string
   ) => void;
   updateNodeData: (nodeId: string, data: Partial<ChatNodeData>) => void;
   removeNode: (nodeId: string) => void;
@@ -111,7 +114,7 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
       };
     }),
 
-  addBranchNode: (position, sourceNodeId, messages, model) =>
+  addBranchNode: (position, sourceNodeId, messages, model, initialInput?) =>
     set((state) => {
       const newId = nanoid();
       return {
@@ -123,7 +126,13 @@ export const useCanvasStore = create<CanvasStore>((set) => ({
             dragHandle: DRAG_HANDLE,
             position,
             // Pass full history as context; branchDepth hides it from the UI
-            data: { title: "Branch", model, messages, branchDepth: messages.length },
+            data: {
+              title: "Branch",
+              model,
+              messages,
+              branchDepth: messages.length,
+              ...(initialInput ? { initialInput } : {}),
+            },
           },
         ],
         edges: [

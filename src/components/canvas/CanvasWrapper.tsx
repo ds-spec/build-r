@@ -73,15 +73,15 @@ export default function CanvasWrapper({ canvas }: Props) {
   return (
     <div className="flex flex-col w-full h-full">
       {/* Title bar */}
-      <div className="flex items-center gap-3 h-11 px-4 shrink-0 border-b border-white/6 bg-[#0b090c]">
+      <div className="flex items-center gap-3 h-11 px-4 shrink-0 border-b border-border bg-surface text-text">
         <Link
           href="/dashboard"
-          className="text-white/25 hover:text-white/60 transition-colors"
+          className="text-subtle hover:text-muted transition-colors"
         >
           <ArrowLeft size={14} />
         </Link>
 
-        <div className="w-px h-4 bg-white/8" />
+        <div className="w-px h-4 bg-border" />
 
         {editingTitle ? (
           <input
@@ -90,12 +90,12 @@ export default function CanvasWrapper({ canvas }: Props) {
             onChange={(e) => handleTitleChange(e.target.value)}
             onBlur={() => setEditingTitle(false)}
             onKeyDown={(e) => e.key === "Enter" && setEditingTitle(false)}
-            className="bg-transparent text-sm font-medium text-white/75 outline-none min-w-0 w-64"
+            className="bg-transparent text-sm font-medium text-text outline-none min-w-0 w-64"
           />
         ) : (
           <span
             onClick={() => setEditingTitle(true)}
-            className="text-sm font-medium text-white/40 hover:text-white/70 cursor-pointer transition-colors select-none"
+            className="text-sm font-medium text-muted hover:text-text cursor-pointer transition-colors select-none"
           >
             {title}
           </span>

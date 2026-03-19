@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
-import { Plus, LogOut, Loader2, Trash2 } from "lucide-react";
+import { Plus, LogOut, Loader2, Trash2, Sun, Moon } from "lucide-react";
+import { useTheme } from "@/lib/useTheme";
 
 type Canvas = { id: string; title: string; updated_at: string };
 
@@ -40,7 +41,7 @@ function UserAvatar({ user }: { user: User }) {
       <img
         src={src}
         alt=""
-        className="w-7 h-7 rounded-full object-cover ring-1 ring-white/10"
+        className="w-7 h-7 rounded-full object-cover ring-1 ring-border"
       />
     );
   const initials = firstName(user).slice(0, 2).toUpperCase();
@@ -62,8 +63,11 @@ function CanvasPreview() {
         backgroundSize: "18px 18px",
       }}
     >
-      {/* Bottom fade into card footer */}
-      <div className="absolute inset-x-0 bottom-0 h-14 bg-linear-to-t from-surface to-transparent" />
+      {/* Bottom fade into card surface */}
+      <div
+        className="absolute inset-x-0 bottom-0 h-14"
+        style={{ background: "linear-gradient(to top, var(--color-surface), transparent)" }}
+      />
       {/* Mini nodes illustration — fades in on card hover */}
       <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
         <div className="w-14 h-6 rounded-md bg-white/[0.07] border border-white/10 flex items-center justify-center">
@@ -91,7 +95,7 @@ function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center py-28 gap-5">
       <div
-        className="w-20 h-20 rounded-2xl border border-white/8 relative overflow-hidden"
+        className="w-20 h-20 rounded-2xl border border-border relative overflow-hidden"
         style={{
           background: "#0a0809",
           backgroundImage:
@@ -104,12 +108,15 @@ function EmptyState({
           <div className="w-4 h-px bg-white/20" />
           <div className="w-7 h-5 rounded bg-white/4 border border-white/7" />
         </div>
-        <div className="absolute inset-x-0 bottom-0 h-8 bg-linear-to-t from-[#0a0809] to-transparent" />
+        <div
+          className="absolute inset-x-0 bottom-0 h-8"
+          style={{ background: "linear-gradient(to top, #0a0809, transparent)" }}
+        />
       </div>
 
       <div className="text-center">
-        <p className="text-[15px] font-medium text-white/55">No canvases yet</p>
-        <p className="text-xs text-white/25 mt-1">
+        <p className="text-[15px] font-medium text-muted">No canvases yet</p>
+        <p className="text-xs text-subtle mt-1">
           Create a canvas to start building
         </p>
       </div>
@@ -142,6 +149,7 @@ export default function DashboardClient({
   const [canvases, setCanvases] = useState<Canvas[]>(initial);
   const [creating, setCreating] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const { theme, toggle } = useTheme();
 
   async function createCanvas() {
     setCreating(true);
@@ -169,25 +177,32 @@ export default function DashboardClient({
   }
 
   return (
-    <div className="min-h-screen bg-canvas text-white">
+    <div className="min-h-screen bg-canvas text-text">
       {/* Ambient top glow */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-150 h-px bg-accent/20 blur-[60px] pointer-events-none" />
 
       {/* Nav */}
-      <header className="sticky top-0 z-10 border-b border-white/5 bg-canvas/80 backdrop-blur-xl px-6 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-10 border-b border-border bg-canvas/80 backdrop-blur-xl px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-[15px] font-bold tracking-tight">buildr</span>
           <div className="w-1 h-1 rounded-full bg-accent" />
         </div>
         <div className="flex items-center gap-2.5">
-          <span className="hidden sm:block text-[11px] text-white/25 tabular-nums">
+          <span className="hidden sm:block text-[11px] text-subtle tabular-nums">
             {user.email}
           </span>
-          <div className="h-3.5 w-px bg-white/10" />
+          <div className="h-3.5 w-px bg-border" />
           <UserAvatar user={user} />
           <button
+            onClick={toggle}
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+            className="p-1.5 rounded-md text-subtle hover:text-muted hover:bg-surface-2 transition-all duration-150"
+          >
+            {theme === "dark" ? <Sun size={13} /> : <Moon size={13} />}
+          </button>
+          <button
             onClick={signOut}
-            className="p-1.5 rounded-md text-white/25 hover:text-white/60 hover:bg-white/5 transition-all duration-150"
+            className="p-1.5 rounded-md text-subtle hover:text-muted hover:bg-surface-2 transition-all duration-150"
             title="Sign out"
           >
             <LogOut size={13} />
@@ -200,13 +215,13 @@ export default function DashboardClient({
         {/* Page header */}
         <div className="flex items-end justify-between mb-10">
           <div>
-            <p className="text-[11px] uppercase tracking-[0.12em] text-white/25 mb-1.5 font-medium">
+            <p className="text-[11px] uppercase tracking-[0.12em] text-subtle mb-1.5 font-medium">
               {getGreeting()}
             </p>
-            <h1 className="text-[26px] font-semibold text-white/90 tracking-tight leading-none">
+            <h1 className="text-[26px] font-semibold text-text tracking-tight leading-none">
               {firstName(user)}
             </h1>
-            <p className="text-sm text-white/30 mt-2">
+            <p className="text-sm text-muted mt-2">
               {canvases.length === 0
                 ? "Start by creating your first canvas"
                 : `${canvases.length} canvas${canvases.length !== 1 ? "es" : ""}`}
@@ -239,7 +254,7 @@ export default function DashboardClient({
               <button
                 key={canvas.id}
                 onClick={() => router.push(`/canvas/${canvas.id}`)}
-                className="group relative text-left bg-surface border border-white/7 hover:border-accent/20 rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(0,0,0,0.55),0_0_0_1px_rgba(192,52,29,0.07)] active:scale-[0.99] active:translate-y-0"
+                className="group relative text-left bg-surface border border-border hover:border-accent/20 rounded-2xl overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_40px_rgba(0,0,0,0.15),0_0_0_1px_rgba(192,52,29,0.07)] active:scale-[0.99] active:translate-y-0"
               >
                 {/* Accent top line */}
                 <div className="h-px bg-linear-to-r from-transparent via-accent/25 to-transparent group-hover:via-accent/50 transition-all duration-300" />
@@ -249,17 +264,17 @@ export default function DashboardClient({
                 {/* Footer */}
                 <div className="px-4 py-3.5 flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-white/75 group-hover:text-white/95 transition-colors duration-150 truncate">
+                    <p className="text-[13px] font-medium text-muted group-hover:text-text transition-colors duration-150 truncate">
                       {canvas.title}
                     </p>
-                    <p className="text-[11px] text-white/25 mt-0.5 tabular-nums">
+                    <p className="text-[11px] text-subtle mt-0.5 tabular-nums">
                       {timeAgo(canvas.updated_at)}
                     </p>
                   </div>
 
                   <button
                     onClick={(e) => deleteCanvas(canvas.id, e)}
-                    className="shrink-0 mt-0.5 p-1.5 rounded-md text-white/0 group-hover:text-white/25 hover:text-red-400! hover:bg-red-400/10 transition-all duration-150"
+                    className="shrink-0 mt-0.5 p-1.5 rounded-md text-transparent group-hover:text-subtle hover:text-red-400! hover:bg-red-400/10 transition-all duration-150"
                     title="Delete"
                   >
                     {deletingId === canvas.id ? (

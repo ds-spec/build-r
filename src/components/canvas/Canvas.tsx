@@ -11,16 +11,43 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Settings } from "lucide-react";
+import { Settings, Sun, Moon } from "lucide-react";
 
 import { useCanvasStore } from "@/lib/store";
+import { useTheme } from "@/lib/useTheme";
 import ChatNode from "./ChatNode";
 import ApiKeyPanel from "@/components/settings/ApiKeyPanel";
 
-const nodeTypes = {
-  chatNode: ChatNode,
-};
+const nodeTypes = { chatNode: ChatNode };
 
+// ── Theme toggle ──────────────────────────────────────────────────────────────
+function ThemeToggle() {
+  const { theme, toggle } = useTheme();
+  return (
+    <button
+      onClick={toggle}
+      title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      className="w-8 h-8 flex items-center justify-center rounded-lg transition-all"
+      style={{
+        background: "var(--color-surface)",
+        border: "1px solid var(--color-border)",
+        color: "var(--color-muted)",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text)";
+        (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--color-border-focus)";
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLButtonElement).style.color = "var(--color-muted)";
+        (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--color-border)";
+      }}
+    >
+      {theme === "dark" ? <Sun size={13} /> : <Moon size={13} />}
+    </button>
+  );
+}
+
+// ── Canvas inner ──────────────────────────────────────────────────────────────
 function CanvasInner() {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, addNode, duplicateNode } =
     useCanvasStore();
@@ -35,7 +62,7 @@ function CanvasInner() {
         target.tagName === "TEXTAREA" ||
         target.isContentEditable;
 
-      // N — new node (no modifier, like Figma)
+      // N — new node
       if (e.key === "n" && !e.metaKey && !e.ctrlKey && !editing) {
         e.preventDefault();
         addNode(screenToFlowPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 }));
@@ -66,9 +93,7 @@ function CanvasInner() {
         zoomOnDoubleClick={false}
         onPaneClick={(event) => {
           if (event.detail === 2) {
-            addNode(
-              screenToFlowPosition({ x: event.clientX, y: event.clientY })
-            );
+            addNode(screenToFlowPosition({ x: event.clientX, y: event.clientY }));
           }
         }}
         fitView
@@ -79,45 +104,66 @@ function CanvasInner() {
         proOptions={{ hideAttribution: true }}
         defaultEdgeOptions={{
           type: "default",
-          style: { stroke: "#3a2825", strokeWidth: 1.25 },
         }}
-        connectionLineStyle={{
-          stroke: "#c0341d",
-          strokeWidth: 1,
-          opacity: 0.5,
-        }}
+        connectionLineStyle={{ stroke: "#c0341d", strokeWidth: 1, opacity: 0.5 }}
         elevateNodesOnSelect
       >
+        {/* Empty canvas hint */}
         {nodes.length === 0 && (
-          <Panel position="top-center" className="top-1/2! -translate-y-1/2! pointer-events-none select-none">
+          <Panel
+            position="top-center"
+            className="top-1/2! -translate-y-1/2! pointer-events-none select-none"
+          >
             <div className="flex flex-col items-center gap-2 text-center">
-              <p className="text-white/20 text-sm font-medium tracking-wide">
+              <p className="text-sm font-medium tracking-wide" style={{ color: "var(--color-subtle)" }}>
                 Double-click anywhere to create a node
               </p>
-              <p className="text-white/10 text-xs">
-                or press <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-white/20 font-mono text-[11px]">N</kbd>
+              <p className="text-xs" style={{ color: "var(--color-subtle)", opacity: 0.6 }}>
+                or press{" "}
+                <kbd
+                  className="px-1.5 py-0.5 rounded font-mono text-[11px]"
+                  style={{
+                    background: "var(--color-surface)",
+                    border: "1px solid var(--color-border)",
+                    color: "var(--color-subtle)",
+                  }}
+                >
+                  N
+                </kbd>
               </p>
             </div>
           </Panel>
         )}
 
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={44}
-          size={1.5}
-          color="#1e1a1c"
-        />
-
+        <Background variant={BackgroundVariant.Dots} gap={44} size={1.5} color="#1e1a1c" />
         <Controls position="bottom-left" showInteractive={false} />
 
+        {/* Top-right panel — API Keys + Theme toggle */}
         <Panel position="top-right">
-          <button
-            onClick={() => setSettingsOpen(true)}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#0f0d10] border border-white/7 text-white/35 hover:text-white/65 hover:border-white/13 transition-all text-xs"
-          >
-            <Settings size={13} />
-            API Keys
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg transition-all text-xs"
+              style={{
+                background: "var(--color-surface)",
+                border: "1px solid var(--color-border)",
+                color: "var(--color-muted)",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text)";
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--color-border-focus)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLButtonElement).style.color = "var(--color-muted)";
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "var(--color-border)";
+              }}
+            >
+              <Settings size={13} />
+              API Keys
+            </button>
+
+            <ThemeToggle />
+          </div>
         </Panel>
       </ReactFlow>
 
@@ -126,6 +172,7 @@ function CanvasInner() {
   );
 }
 
+// ── Canvas root ───────────────────────────────────────────────────────────────
 export default function Canvas() {
   return (
     <div className="w-full h-full">
